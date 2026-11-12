@@ -3,6 +3,8 @@ name: notifier
 # Non-AI new-post notifier for #社群公告 (IG, YouTube, TikTok, Threads).
 # Schedule is UTC. 00:00-17:59 UTC = 08:00-01:59 Asia/Taipei (skips 02:00-07:59).
 on:
+  schedule:
+    - cron: "*/5 0-17 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -24,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
