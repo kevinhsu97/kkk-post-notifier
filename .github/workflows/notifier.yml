@@ -1,0 +1,69 @@
+name: notifier
+
+# Non-AI new-post notifier for #社群公告 (IG, YouTube, TikTok, Threads).
+# Schedule is UTC. 00:00-17:59 UTC = 08:00-01:59 Asia/Taipei (skips 02:00-07:59).
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: print what would be posted; post nothing, change nothing"
+        type: boolean
+        default: true
+
+# Never run two jobs at the same time; a queued run waits for the running one.
+concurrency:
+  group: kkk-post-notifier
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # commit state.json back
+  actions: write    # keepalive: keep the scheduled workflow enabled
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync to latest main (state from the previous run)
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run notifier
+        env:
+          IG_GRAPH_TOKEN: ${{ secrets.IG_GRAPH_TOKEN }}
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GH_SECRETS_PAT: ${{ secrets.GH_SECRETS_PAT }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+          NOTIFIER_GIT_COMMIT: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '0' || '1' }}
+        run: python3 notifier.py
+
+      - name: Keepalive (scheduled workflows stop after 60 days without repo activity)
+        if: ${{ always() && !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          last=$(git log -1 --format=%ct origin/main 2>/dev/null || echo 0)
+          git fetch origin main >/dev/null 2>&1 || true
+          last=$(git log -1 --format=%ct origin/main 2>/dev/null || echo "$last")
+          now=$(date +%s)
+          if [ $(( now - last )) -gt $(( 20 * 86400 )) ]; then
+            git checkout -B main origin/main >/dev/null 2>&1
+            date -u +%Y-%m-%dT%H:%M:%SZ > .keepalive
+            git add .keepalive
+            git commit -m "keepalive" >/dev/null
+            for i in 1 2 3; do git push origin HEAD:main && break; git pull --rebase origin main || true; sleep 3; done
+          fi
+          # Once a day (around 12:00 Asia/Taipei) also re-enable this workflow via the API.
+          if [ "$(TZ=Asia/Taipei date +%H)" = "12" ] && [ "$(TZ=Asia/Taipei date +%M)" -lt 5 ]; then
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/notifier.yml/enable" || true
+          fi
