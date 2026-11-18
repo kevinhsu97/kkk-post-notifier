@@ -15,7 +15,7 @@
     "18016793078992940",
     "17971994922188524"
   ],
-  "updated_at": "2026-11-18 14:51:55 Asia/Taipei",
+  "updated_at": "2026-11-19 00:09:22 Asia/Taipei",
   "youtube": {
     "seen_ids": [
       "aGX2iHiLTqs",
@@ -68,7 +68,9 @@
       "18124512619948739"
     ],
     "updated_at": "2026-11-18 01:01:59 Asia/Taipei",
-    "last_refresh_at": "2026-11-11 15:46:18 Asia/Taipei",
-    "token_expires_at": "2027-01-10 15:46:18 Asia/Taipei"
+    "last_refresh_at": "2026-11-19 00:09:22 Asia/Taipei",
+    "token_expires_at": "2027-01-18 00:09:20 Asia/Taipei",
+    "last_refresh_attempt_at": "2026-11-19 00:09:20 Asia/Taipei",
+    "consecutive_refresh_failures": 0
   }
 }
